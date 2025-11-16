@@ -1,4 +1,4 @@
-package ma.emsi.qejiousalaheddine.tp2_qejiou.jsf;
+package ma.emsi.qejiousalaheddine.tp4_qejiou_webapp.jsf;
 
 import jakarta.faces.application.FacesMessage;
 import jakarta.faces.context.FacesContext;
@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 // ==== IMPORT CORRIGÉ (on importe le NOUVEAU client) ====
-import ma.emsi.qejiousalaheddine.tp2_qejiou.llm.LlmClient;
+import ma.emsi.qejiousalaheddine.tp4_qejiou_webapp.llm.LlmClient;
 // =======================================================
 
 import java.io.Serializable;

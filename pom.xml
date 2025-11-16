@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>ma.emsi.QejiouSalaheddine</groupId>
-    <artifactId>tp2_Qjiou</artifactId>
+    <artifactId>tp4_Qejiou_webApp</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>tp2_Qjiou</name>
     <packaging>war</packaging>

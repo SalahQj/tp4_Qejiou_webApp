@@ -1,4 +1,4 @@
-package ma.emsi.qejiousalaheddine.tp2_qejiou.jsf;
+package ma.emsi.qejiousalaheddine.tp4_qejiou_webapp.jsf;
 
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;

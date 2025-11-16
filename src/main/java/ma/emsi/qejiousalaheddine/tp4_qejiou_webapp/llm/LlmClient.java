@@ -1,4 +1,4 @@
-package ma.emsi.qejiousalaheddine.tp2_qejiou.llm;
+package ma.emsi.qejiousalaheddine.tp4_qejiou_webapp.llm;
 
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
