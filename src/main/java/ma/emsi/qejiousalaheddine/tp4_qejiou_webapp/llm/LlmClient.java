@@ -1,58 +1,81 @@
 package ma.emsi.qejiousalaheddine.tp4_qejiou_webapp.llm;
 
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel;
-import dev.langchain4j.service.AiServices;
-import dev.langchain4j.data.message.SystemMessage;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.Dependent;
 
-// 1. AJOUT DE L'IMPORT NÉCESSAIRE
 import java.io.Serializable;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
+import java.util.Map;
 
-@Dependent // Annotation CDI pour que le Backing Bean puisse l'injecter
-// 2. AJOUT DE "implements Serializable"
+@Dependent
 public class LlmClient implements Serializable {
 
-    private Assistant assistant;
-    private ChatMemory chatMemory;
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+    private String systemRole = "You are a helpful assistant.";
 
     public LlmClient() {
-        // 1. Récupérer la clé API
-        String geminiApiKey = System.getenv("GEMINI_KEY");
-        if (geminiApiKey == null || geminiApiKey.isEmpty()) {
-            throw new RuntimeException("Erreur : GEMINI_KEY n'est pas définie.");
-        }
-
-        // 2. Créer le modèle de chat (en utilisant votre modèle qui fonctionne)
-        ChatModel model = GoogleAiGeminiChatModel.builder()
-                .apiKey(geminiApiKey)
-                .modelName("gemini-2.5-flash") // Le modèle de vos tests
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        // 3. Créer la mémoire (comme dans les instructions du TP)
-        this.chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        // 4. Créer l'assistant
-        this.assistant = AiServices.builder(Assistant.class)
-                .chatModel(model)
-                .chatMemory(chatMemory)
-                .build();
+        this.httpClient = HttpClient.newHttpClient();
+        this.objectMapper = new ObjectMapper();
     }
 
     // Méthode pour définir le rôle système
     public void setSystemRole(String systemRole) {
-        // Vider la mémoire pour commencer une nouvelle conversation
-        this.chatMemory.clear();
-        // Ajouter le nouveau rôle système
-        this.chatMemory.add(SystemMessage.from(systemRole));
+        this.systemRole = systemRole;
     }
 
-    // Méthode pour envoyer la question au LLM
+    // Méthode pour envoyer la question au LLM (approche HTTP directe)
     public String chat(String userQuestion) {
-        return this.assistant.chat(userQuestion);
+        try {
+            String apiKey = System.getenv("GEMINI_API_KEY");
+            if (apiKey == null || apiKey.isEmpty()) {
+                return "❌ Erreur : GEMINI_API_KEY n'est pas définie. Utilisez OpenAI à la place.";
+            }
+
+            // Construction du payload pour Gemini
+            Map<String, Object> payload = Map.of(
+                    "contents", List.of(
+                            Map.of("parts", List.of(
+                                    Map.of("text", systemRole + "\n\nUser: " + userQuestion + "\n\nAssistant:")
+                            ))
+                    ),
+                    "generationConfig", Map.of(
+                            "temperature", 0.7,
+                            "topK", 20,
+                            "topP", 0.9,
+                            "maxOutputTokens", 1000
+                    )
+            );
+
+            String requestBody = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=" + apiKey))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                // Extraction de la réponse
+                Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
+                List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseMap.get("candidates");
+                if (candidates != null && !candidates.isEmpty()) {
+                    Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+                    List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+                    return (String) parts.get(0).get("text");
+                }
+            }
+
+            return "❌ Erreur API Gemini: " + response.body();
+
+        } catch (Exception e) {
+            return "❌ Erreur lors de l'appel à Gemini: " + e.getMessage();
+        }
     }
 }

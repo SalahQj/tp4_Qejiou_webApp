@@ -7,7 +7,31 @@
 <h:head>
     <h:outputStylesheet name="css/mycsslayout.css"/>
     <h:outputScript name="js/script.js" target="head"/>
-    <title>Conversation (TP2 - LangChain4j)</title>
+    <title>Conversation RAG (TP4 - LangChain4j avec PDF)</title>
+    <style>
+        .upload-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .rag-info {
+            background-color: #e7f3ff;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .feature-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+    </style>
 </h:head>
 <h:body>
     <f:view>
@@ -17,6 +41,7 @@
 
         <h:form id="form">
 
+            <!-- SECTION RÔLE SYSTÈME -->
             <p:outputLabel for="rolesysteme" value="Rôle de l'API : "/>
             <p:selectOneMenu id="rolesysteme" value="#{bb.roleSysteme}" editable="true"
                              required="true" requiredMessage="Vous devez indiquer le rôle de l'API"
@@ -27,6 +52,47 @@
 
             <h:outputText value="  "/>
             <h:commandButton value="Nouveau chat" action="#{bb.nouveauChat}" />
+
+            <!-- SECTION UPLOAD DE FICHIERS PDF POUR RAG -->
+            <div class="upload-section">
+                <h3>📁 Chargement de PDF pour le RAG <span class="feature-badge">Fonctionnalité 3</span></h3>
+
+                <h:form id="pdfForm" enctype="multipart/form-data">
+                    <h:panelGrid columns="3" style="margin-bottom: 10px;">
+                        <h:outputLabel for="file" value="Fichier PDF :"/>
+                        <p:fileUpload id="file" value="#{bb.fichier}"
+                                      mode="simple" skinSimple="true"
+                                      allowTypes="/(\.|\/)(pdf)$/"
+                                      requiredMessage="Veuillez sélectionner un fichier PDF"/>
+                        <h:message for="file" errorStyle="color: red"/>
+                    </h:panelGrid>
+
+                    <p:commandButton value="📤 Uploader le PDF"
+                                     action="#{bb.upload}"
+                                     update="pdfForm messageUpload ragStatus"
+                                     icon="pi pi-upload"
+                                     style="margin-right: 10px;"/>
+
+                    <h:outputText id="messageUpload"
+                                  value="#{bb.messagePourChargementFichier}"
+                                  style="color: green; font-weight: bold;"/>
+                </h:form>
+
+                <!-- Statut RAG -->
+                <div id="ragStatus" class="rag-info">
+                    <h:outputText value="📊 Statut RAG : " style="font-weight: bold;"/>
+                    <h:outputText value="Système de RAG actif avec embeddings locaux"
+                                  style="color: #007bff; font-weight: bold;"/>
+                    <br/>
+                    <h:outputText value="Fonctionnalités activées : "/>
+                    <ul>
+                        <li>RAG avec documents PDF <span class="feature-badge">Fonctionnalité 2</span></li>
+                        <li>Embedding local AllMiniLmL6V2 <span class="feature-badge">Fonctionnalité 4</span></li>
+                        <li>Contrôle de diversité (topK=20) <span class="feature-badge">Fonctionnalité 1</span></li>
+                        <li>Upload de fichiers PDF <span class="feature-badge">Fonctionnalité 3</span></li>
+                    </ul>
+                </div>
+            </div>
 
             <!-- Disposition en deux colonnes -->
             <h:panelGrid id="paneltotal" columns="2" columnClasses="topAligned,topAligned">
@@ -40,31 +106,66 @@
                             <button type="button" onclick="toutEffacer()">Effacer question et réponse</button>
                         </h:panelGroup>
                         <h:inputTextarea id="question" value="#{bb.question}" title="Question"
-                                         cols="50" rows="5"/>
-                        <h:commandButton value="Envoyer la question" action="#{bb.envoyer}"/>
+                                         cols="50" rows="5" placeholder="Posez votre question ici... Le système utilisera les PDF chargés pour répondre."/>
+                        <h:commandButton value="🚀 Envoyer la question (avec RAG)" action="#{bb.envoyer}"/>
+
                         <h:panelGroup>
-                            <h:outputText value="Réponse :"/>
+                            <h:outputText value="Réponse : "/>
+                            <h:outputText value="(avec contexte RAG)" style="color: #666; font-size: 0.9em;"/>
                             <button type="button" onclick="copyToClipboard('reponse')">Copier réponse</button>
                         </h:panelGroup>
                         <h:inputTextarea id="reponse" value="#{bb.reponse}" title="Réponse"
-                                         cols="50" rows="15" readonly="true"/> <!-- Ajout de readonly -->
+                                         cols="50" rows="15" readonly="true"
+                                         style="background-color: #f8f9fa; border: 1px solid #28a745;"/>
 
-                        <!-- ▼▼▼ CORRECTION ICI ▼▼▼ -->
                     </h:panelGrid>
-                    <!-- ▲▲▲ J'ai remplacé </h:grid> par </h:panelGrid> ▲▲▲ -->
 
-                    <!-- ==== BLOC DEBUG SUPPRIMÉ ==== -->
+                    <!-- INFORMATIONS RAG -->
+                    <div class="rag-info">
+                        <h4>💡 Comment utiliser le RAG :</h4>
+                        <ol>
+                            <li>Chargez un ou plusieurs fichiers PDF avec le formulaire ci-dessus</li>
+                            <li>Posez des questions spécifiques sur le contenu des documents</li>
+                            <li>Le système recherchera les informations pertinentes dans les PDF</li>
+                            <li>La réponse sera générée en utilisant le contexte trouvé</li>
+                        </ol>
+                        <p><strong>Exemple de questions :</strong></p>
+                        <ul>
+                            <li>"Quels sont les points principaux du document ?"</li>
+                            <li>"Expliquez le chapitre 3 du PDF chargé"</li>
+                            <li>"Quelles sont les conclusions de l'étude ?"</li>
+                        </ul>
+                    </div>
 
                 </h:panelGrid>
 
                 <!-- COLONNE DE DROITE (Conversation) -->
                 <h:panelGrid id="paneldroit" columns="1" style="vertical-align: top;">
                     <h:panelGroup>
-                        <h:outputText value="Conversation :"/>
+                        <h:outputText value="Historique de conversation :"/>
                         <button type="button" onclick="copyToClipboard('conversation')">Copier conversation</button>
+                        <h:commandButton value="🧹 Effacer l'historique" action="#{bb.effacerHistorique}"
+                                         style="margin-left: 10px; background-color: #dc3545; color: white;"/>
                     </h:panelGroup>
                     <h:inputTextarea id="conversation" rows="30" cols="50" readonly="true"
-                                     value="#{bb.conversation}" title="Conversation entière"/>
+                                     value="#{bb.conversation}" title="Conversation entière"
+                                     style="background-color: #f8f9fa;"/>
+
+                    <!-- FICHIERS CHARGÉS -->
+                    <div class="rag-info" style="margin-top: 15px;">
+                        <h4>📄 Fichiers PDF chargés :</h4>
+                        <h:dataTable value="#{bb.fichiersCharges}" var="fichier"
+                                     rendered="#{not empty bb.fichiersCharges}"
+                                     style="width: 100%;">
+                            <h:column>
+                                <f:facet name="header">Nom du fichier</f:facet>
+                                #{fichier}
+                            </h:column>
+                        </h:dataTable>
+                        <h:outputText value="Aucun fichier chargé"
+                                      rendered="#{empty bb.fichiersCharges}"
+                                      style="color: #666; font-style: italic;"/>
+                    </div>
                 </h:panelGrid>
 
             </h:panelGrid>
